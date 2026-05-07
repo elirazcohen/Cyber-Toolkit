@@ -69,10 +69,6 @@ Scans the local network (`192.168.1.x`) to:
 
 ## Example Usage
 
-```powershell
-# Run the toolkit
-. .\cyber toolkit.ps1
-
 # Run a port scan
 Invoke-Portscan
 
