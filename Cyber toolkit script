@@ -1,0 +1,78 @@
+Function Invoke-Portscan {
+$ports = 443, 80, 53
+$targets = "google.com", "youtube.com", "microsoft.com"
+
+foreach ($target in $targets) {
+Write-Host "`nScanning $target..." -ForegroundColor Cyan
+
+
+#--------------Resolve DNS----------------
+
+$IPs = Resolve-DnsName $target | Where-Object { $_.Type -eq "A" }
+
+$IP = ($IPs | Select-Object -First 1).IPAddress
+
+Write-Host "IP Address: $IP"
+
+#---------------Scan ports---------------
+foreach ($port in $ports) {
+
+$results = Test-NetConnection $target -Port $port
+
+if ($results.TcpTestSucceeded) {
+Write-Host "[OPEN]  $target : $port" -ForegroundColor Green
+} else {
+Write-Host "[CLOSED] $target : $port" -ForegroundColor Red
+}
+}
+}
+}
+#-------- LAN SCANNER --------
+Function invoke-LANscan {
+# Permanent log file in InstalledScripts folder
+$logFile = "$PSScriptRoot\network_scan.txt"
+Add-Content -Path $logFile -Value "`n---- LAN Scan Started: $(Get-Date) ----`n"
+# starting message for the LAN scanning
+Write-Host "`nStarting LAN scan..." -ForegroundColor Yellow
+
+# assigning arp -a for MAC addresses
+$ARPTable = arp -a
+# looping through IPs
+for ($i = 1; $i -le 254; $i++) {
+
+$IP = "192.168.1.$i"
+
+
+if (Test-Connection -ComputerName $IP -Count 2 -Quiet -ErrorAction SilentlyContinue) {
+
+# Try to resolve hostname, fallback to "Unknown"
+try {
+
+$hostname = ([System.Net.Dns]::GetHostEntry($IP)).HostName
+
+} catch {
+
+$hostname = "Unknown"
+
+}
+
+$ARPTable = arp -a
+
+$MACLine = $ARPTable | Select-String $IP
+
+if ($MACLine) {
+    $Parts = $MACLine.ToString().Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)
+    $MAC = $Parts[1]
+} else {
+    $MAC = "Unknown"
+}
+
+# printing info to the console
+Write-Host "$IP - $($MAC) $hostname is ONLINE" -ForegroundColor Green
+# logging output to a file
+Add-Content -Path $logFile -Value "$IP - $($MAC) $hostname is ONLINE`n"
+}
+} 
+# printing a friendly message to the console for a successful completed scan
+Write-Host "`nScan complete." -ForegroundColor Cyan
+}
